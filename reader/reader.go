@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	ui "github.com/gizak/termui"
@@ -36,11 +37,32 @@ type LogEvent struct {
 func parseLogEvent(line string) LogEvent {
 	re, _ := regexp.Compile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - (.*) \[(.*)\] \"((.*) (\/.*) .*)\" (\d{3}) (\d*)$`)
 	result := re.FindStringSubmatch(line)
-	for k, v := range result {
-		fmt.Printf("%d. %s\n", k, v)
+	host := result[1]
+	user := result[2]
+	date := result[3]
+	verb := result[5]
+	path := result[6]
+	section := path
+	pieces := strings.Split(path, "/")
+	if len(pieces) > 2 {
+		section = "/" + pieces[1]
 	}
+	print(section)
 
-	return LogEvent{}
+	status, _ := strconv.Atoi(result[7])
+	size, _ := strconv.Atoi(result[8])
+
+	return LogEvent{
+		Value:      line,
+		Host:       host,
+		User:       user,
+		Date:       date,
+		Verb:       verb,
+		Section:    section,
+		Path:       path,
+		StatusCode: status,
+		ByteSize:   size,
+	}
 }
 
 func logFileLastLine() (string, error) {
@@ -87,6 +109,7 @@ func logFileLastLine() (string, error) {
 		buffer = buffer[:numRead]
 
 		logEvent := parseLogEvent(string(buffer))
+
 		files = append(files, logEvent)
 		previousOffset = offset
 		return string(buffer), nil
