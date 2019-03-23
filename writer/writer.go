@@ -22,6 +22,7 @@ func main() {
 	HTTPVerbs := [5]string{"GET", "POST", "PUT", "PATCH", "DELETE"}
 	Users := [5]string{"james", "jill", "frank", "patrick", "lucy"}
 	Sections := [5]string{"api", "admin", "account", "user", "config"}
+	Subsections := [5]string{"", "/user", "/widget", "/search", "/update"}
 	StatusCodes := [7]int{200, 200, 201, 401, 403, 500, 503}
 
 	//127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report HTTP/1.0" 200 123
@@ -41,13 +42,16 @@ func main() {
 		section := Sections[randomInt(0, 5)]
 
 		rand.Seed(time.Now().UnixNano())
+		subsection := Subsections[randomInt(0, 5)]
+
+		rand.Seed(time.Now().UnixNano())
 		statusCode := StatusCodes[randomInt(0, 5)]
 
 		rand.Seed(time.Now().UnixNano())
 		byteSize := randomInt(100, 500)
 		t := time.Now().UTC()
 
-		fmt.Fprintf(f, "127.0.0.1 - %s [%02d/%s/%d:%02d:%02d:%02d +0000] \"%s /%s HTTP/1.0\" %d %d\n", user, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second(), verb, section, statusCode, byteSize)
+		fmt.Fprintf(f, "127.0.0.1 - %s [%02d/%s/%d:%02d:%02d:%02d +0000] \"%s /%s%s HTTP/1.0\" %d %d\n", user, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second(), verb, section, subsection, statusCode, byteSize)
 
 		f.Close()
 		rand.Seed(time.Now().UnixNano())
