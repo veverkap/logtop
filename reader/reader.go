@@ -3,45 +3,19 @@ package main
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"time"
 
 	ui "github.com/gizak/termui"
 	"github.com/gizak/termui/widgets"
+	"github.com/veverkap/logtop/reader/structs"
 )
 
 var previousOffset int64
 var accessLog = "/tmp/access.log"
-var files = make([]LogEvent, 0)
-
-// LogEvent represents a line of the log file
-type LogEvent struct {
-	Value      string
-	Host       string
-	User       string
-	Date       string
-	Verb       string
-	Section    string
-	Path       string
-	StatusCode int
-	ByteSize   int
-}
-
-// A log line is of the format:
-// 127.0.0.1 - frank [23/Mar/2019:18:44:53 +0000] "DELETE /config/update HTTP/1.0" 401 491
-func parseLogEvent(line string) LogEvent {
-	re, _ := regexp.Compile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - (.*) \[(.*)\] \"((.*) (\/.*) .*)\" (\d{3}) (\d*)$`)
-	result := re.FindStringSubmatch(line)
-	for k, v := range result {
-		fmt.Printf("%d. %s\n", k, v)
-	}
-
-	return LogEvent{}
-}
+var files = make([]structs.LogEvent, 0)
 
 func logFileLastLine() (string, error) {
 	file, err := os.Open(accessLog)
@@ -86,7 +60,8 @@ func logFileLastLine() (string, error) {
 		// print out last line content
 		buffer = buffer[:numRead]
 
-		logEvent := parseLogEvent(string(buffer))
+		logEvent := structs.parseLogEvent(string(buffer))
+
 		files = append(files, logEvent)
 		previousOffset = offset
 		return string(buffer), nil
