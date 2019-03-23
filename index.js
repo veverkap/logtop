@@ -6,7 +6,9 @@ mytail.on('error', err =>
   console.log(err)
 );
 
-mytail.on('line', line => console.log(line));
+mytail.on('line', line =>
+  console.log("line is", line)
+);
 
 mytail.on('ready', fd => console.log("All line are belong to us"));
 
