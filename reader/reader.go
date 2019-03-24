@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -15,7 +16,7 @@ import (
 
 var previousOffset int64
 var accessLog = "/tmp/access.log"
-var files = make([]structs.LogEvent, 0)
+var logEvents = make([]structs.LogEvent, 0)
 
 func logFileLastLine() (string, error) {
 	file, err := os.Open(accessLog)
@@ -61,8 +62,7 @@ func logFileLastLine() (string, error) {
 		buffer = buffer[:numRead]
 
 		logEvent := structs.ParseLogEvent(string(buffer))
-
-		files = append(files, logEvent)
+		logEvents = append(logEvents, logEvent)
 		previousOffset = offset
 		return string(buffer), nil
 	}
@@ -71,6 +71,54 @@ func logFileLastLine() (string, error) {
 }
 
 func main() {
+	file, err := os.Open(accessLog)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+	reader := bufio.NewReader(file)
+
+	for {
+		line, _, err := reader.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		logEvents = append(logEvents, structs.ParseLogEvent(string(line)))
+	}
+
+	p := fmt.Println
+
+	// for _, event := range logEvents {
+	// 	// print(event.Date)
+	// 	//fmt.Printf("%+v\n", event)
+	// 	then := event.Date
+	// 	now := time.Now()
+	// 	p(then)
+	// 	p(now)
+
+	// 	diff := now.Sub(then)
+	// 	p(diff)
+	// 	p("\n")
+	// }
+
+	trailingEvents := structs.TrailingEvents(logEvents, 10)
+
+	for i, event := range trailingEvents {
+		p(i)
+		fmt.Printf("%+v\n", event)
+	}
+
+	// for _, event := range left {
+	// 	// fmt.Printf("%+v\n", event)
+	// }
+
+}
+
+func loader() {
+
 	if len(os.Args) > 1 {
 		accessLog = os.Args[1]
 	}

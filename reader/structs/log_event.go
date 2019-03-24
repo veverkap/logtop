@@ -4,19 +4,53 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // LogEvent represents a line of the log file
 type LogEvent struct {
-	Value      string
 	Host       string
 	User       string
-	Date       string
+	Date       time.Time
 	Verb       string
 	Section    string
 	Path       string
 	StatusCode int
 	ByteSize   int
+	Error      bool
+}
+
+// Index returns the index of the particular log event
+func Index(vs []LogEvent, t LogEvent) int {
+	for i, v := range vs {
+		if v == t {
+			return i
+		}
+	}
+	return -1
+}
+
+// Filter returns the slice of LogEvents matching filter
+func Filter(vs []LogEvent, f func(LogEvent) bool) []LogEvent {
+	vsf := make([]LogEvent, 0)
+	for _, v := range vs {
+		if f(v) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
+// TrailingEvents returns the events the occurred in the lastSeconds
+func TrailingEvents(logEvents []LogEvent, lastSeconds float64) []LogEvent {
+	now := time.Now()
+
+	return Filter(logEvents, func(v LogEvent) bool {
+		diff := now.Sub(v.Date)
+		seconds := diff.Seconds()
+
+		return (seconds <= lastSeconds)
+	})
 }
 
 // ParseLogEvent takes the log string and returns a LogEvent struct
@@ -27,28 +61,30 @@ func ParseLogEvent(line string) LogEvent {
 	result := re.FindStringSubmatch(line)
 	host := result[1]
 	user := result[2]
-	date := result[3]
+	dateString := result[3]
+	const longForm = "02/Jan/2006:15:04:05 -0700"
+	date, _ := time.Parse(longForm, dateString)
 	verb := result[5]
 	path := result[6]
 	section := path
+
 	pieces := strings.Split(path, "/")
 	if len(pieces) > 2 {
 		section = "/" + pieces[1]
 	}
-	print(section)
 
 	status, _ := strconv.Atoi(result[7])
 	size, _ := strconv.Atoi(result[8])
 
 	return LogEvent{
-		Value:      line,
+		Verb:       verb,
 		Host:       host,
 		User:       user,
 		Date:       date,
-		Verb:       verb,
 		Section:    section,
 		Path:       path,
 		StatusCode: status,
 		ByteSize:   size,
+		Error:      status != 200,
 	}
 }
