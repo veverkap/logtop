@@ -70,7 +70,7 @@ func logFileLastLine() (string, error) {
 
 }
 
-func main() {
+func loadExistingLogFile() {
 	file, err := os.Open(accessLog)
 	if err != nil {
 		panic(err)
@@ -88,7 +88,9 @@ func main() {
 
 		logEvents = append(logEvents, structs.ParseLogEvent(string(line)))
 	}
-
+}
+func main() {
+	loadExistingLogFile()
 	p := fmt.Println
 
 	// for _, event := range logEvents {
@@ -104,9 +106,7 @@ func main() {
 	// 	p("\n")
 	// }
 
-	trailingEvents := structs.TrailingEvents(logEvents, 10)
-
-	for i, event := range trailingEvents {
+	for i, event := range structs.TrailingEvents(logEvents, 10) {
 		p(i)
 		fmt.Printf("%+v\n", event)
 	}
