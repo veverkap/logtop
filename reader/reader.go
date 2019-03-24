@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -14,43 +13,15 @@ import (
 
 func main() {
 	helpers.LoadExistingLogFile()
-	p := fmt.Println
 
 	if len(os.Args) > 1 {
 		helpers.AccessLog = os.Args[1]
-
 	}
-	fmt.Printf("helpers.AccessLog = %s", helpers.AccessLog)
-
-	// for _, event := range logEvents {
-	// 	// print(event.Date)
-	// 	//fmt.Printf("%+v\n", event)
-	// 	then := event.Date
-	// 	now := time.Now()
-	// 	p(then)
-	// 	p(now)
-
-	// 	diff := now.Sub(then)
-	// 	p(diff)
-	// 	p("\n")
-	// }
-
-	for i, event := range structs.TrailingEvents(helpers.LogEvents, 10) {
-		p(i)
-		fmt.Printf("%+v\n", event)
-	}
-
-	// for _, event := range left {
-	// 	// fmt.Printf("%+v\n", event)
-	// }
-
+	// fmt.Printf("Loaded %d logevents from %s", len(helpers.LogEvents), helpers.AccessLog)
+	displayUI()
 }
 
-func loader() {
-	if len(os.Args) > 1 {
-		helpers.AccessLog = os.Args[1]
-	}
-
+func displayUI() {
 	if err := ui.Init(); err != nil {
 		log.Fatalf("failed to initialize termui: %v", err)
 	}
@@ -96,9 +67,15 @@ func loader() {
 			}
 		case <-ticker:
 			line, err := helpers.LogFileLastLine()
+
 			if err == nil {
 				l.Rows = append(l.Rows, line)
+				event, err := structs.ParseLogEvent(line)
+				if err == nil {
+					helpers.LogEvents = append(helpers.LogEvents, event)
+				}
 			}
+
 			ui.Render(grid)
 
 			// .Text = text
