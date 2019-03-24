@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -13,12 +14,18 @@ import (
 
 func main() {
 	helpers.LoadExistingLogFile()
-
+	fmt.Printf("There are currently %d events\n", len(helpers.LogEvents))
 	if len(os.Args) > 1 {
 		helpers.AccessLog = os.Args[1]
 	}
-	// fmt.Printf("Loaded %d logevents from %s", len(helpers.LogEvents), helpers.AccessLog)
-	displayUI()
+	for {
+		line, err := helpers.LogFileLastLine()
+		if err == nil {
+			structs.ParseLogEvent(line)
+			fmt.Printf("There are currently %d events\n", len(helpers.LogEvents))
+		}
+	}
+	// displayUI()
 }
 
 func displayUI() {

@@ -27,14 +27,17 @@ func LoadExistingLogFile() {
 	defer file.Close()
 
 	LogEvents = parseStructs(file)
+
+	fileInfo, err := os.Stat(AccessLog)
+	previousOffset = fileInfo.Size()
 }
 
 func parseStructs(file io.Reader) []structs.LogEvent {
 	reader := bufio.NewReader(file)
 	events := make([]structs.LogEvent, 0)
+
 	for {
 		line, _, err := reader.ReadLine()
-
 		if err == io.EOF {
 			break
 		}
@@ -48,48 +51,28 @@ func parseStructs(file io.Reader) []structs.LogEvent {
 
 // LogFileLastLine loads the last line
 func LogFileLastLine() (string, error) {
+	fileInfo, err := os.Stat(AccessLog)
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.Open(AccessLog)
 	if err != nil {
 		panic(err)
 	}
 
 	defer file.Close()
-	reader := bufio.NewReader(file)
-
-	// we need to calculate the size of the last line for file.ReadAt(offset) to work
-
-	// NOTE : not a very effective solution as we need to read
-	// the entire file at least for 1 pass :(
-
-	lastLineSize := 0
-
-	for {
-		line, _, err := reader.ReadLine()
-
-		if err == io.EOF {
-			break
-		}
-
-		lastLineSize = len(line)
-	}
-
-	fileInfo, err := os.Stat(AccessLog)
-
-	// make a buffer size according to the lastLineSize
-	buffer := make([]byte, lastLineSize)
+	buffer := make([]byte, 1024)
 
 	// +1 to compensate for the initial 0 byte of the line
 	// otherwise, the initial character of the line will be missing
 
 	// instead of reading the whole file into memory, we just read from certain offset
-
-	offset := fileInfo.Size() - int64(lastLineSize+1)
-	numRead, err := file.ReadAt(buffer, offset)
+	offset := fileInfo.Size()
+	numRead, err := file.ReadAt(buffer, previousOffset-1)
 
 	if previousOffset != offset {
 		// print out last line content
 		buffer = buffer[:numRead]
-
 		logEvent, error := structs.ParseLogEvent(string(buffer))
 		if error == nil {
 			LogEvents = append(LogEvents, logEvent)
@@ -98,5 +81,4 @@ func LogFileLastLine() (string, error) {
 		return string(buffer), nil
 	}
 	return "", errors.New("No new line")
-
 }

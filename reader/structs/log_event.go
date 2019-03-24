@@ -45,6 +45,7 @@ func TrailingEvents(logEvents []LogEvent, lastSeconds int64) []LogEvent {
 //  A log line is of the format:
 // 127.0.0.1 - frank [23/Mar/2019:18:44:53 +0000] "DELETE /config/update HTTP/1.0" 401 491
 func ParseLogEvent(line string) (LogEvent, error) {
+	line = strings.ReplaceAll(line, "\n", "")
 	re, _ := regexp.Compile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - (.*) \[(.*)\] \"((.*) (\/.*) .*)\" (\d{3}) (\d*)$`)
 	result := re.FindStringSubmatch(line)
 
