@@ -32,14 +32,11 @@ func Filter(vs []LogEvent, f func(LogEvent) bool) []LogEvent {
 }
 
 // TrailingEvents returns the events the occurred in the lastSeconds
-func TrailingEvents(logEvents []LogEvent, lastSeconds float64) []LogEvent {
+func TrailingEvents(logEvents []LogEvent, lastSeconds int64) []LogEvent {
 	now := time.Now()
 
 	return Filter(logEvents, func(v LogEvent) bool {
-		diff := now.Sub(v.Date)
-		seconds := diff.Seconds()
-
-		return (seconds <= lastSeconds)
+		return (int64(now.Sub(v.Date).Seconds()) <= lastSeconds)
 	})
 }
 
@@ -49,32 +46,37 @@ func TrailingEvents(logEvents []LogEvent, lastSeconds float64) []LogEvent {
 func ParseLogEvent(line string) LogEvent {
 	re, _ := regexp.Compile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - (.*) \[(.*)\] \"((.*) (\/.*) .*)\" (\d{3}) (\d*)$`)
 	result := re.FindStringSubmatch(line)
-	host := result[1]
-	user := result[2]
-	dateString := result[3]
-	const longForm = "02/Jan/2006:15:04:05 -0700"
-	date, _ := time.Parse(longForm, dateString)
-	verb := result[5]
-	path := result[6]
-	section := path
 
-	pieces := strings.Split(path, "/")
-	if len(pieces) > 2 {
-		section = "/" + pieces[1]
+	if len(result) == 9 {
+
+		host := result[1]
+		user := result[2]
+		dateString := result[3]
+		const longForm = "02/Jan/2006:15:04:05 -0700"
+		date, _ := time.Parse(longForm, dateString)
+		verb := result[5]
+		path := result[6]
+		section := path
+
+		pieces := strings.Split(path, "/")
+		if len(pieces) > 2 {
+			section = "/" + pieces[1]
+		}
+
+		status, _ := strconv.Atoi(result[7])
+		size, _ := strconv.Atoi(result[8])
+
+		return LogEvent{
+			Verb:       verb,
+			Host:       host,
+			User:       user,
+			Date:       date,
+			Section:    section,
+			Path:       path,
+			StatusCode: status,
+			ByteSize:   size,
+			Error:      status != 200,
+		}
 	}
-
-	status, _ := strconv.Atoi(result[7])
-	size, _ := strconv.Atoi(result[8])
-
-	return LogEvent{
-		Verb:       verb,
-		Host:       host,
-		User:       user,
-		Date:       date,
-		Section:    section,
-		Path:       path,
-		StatusCode: status,
-		ByteSize:   size,
-		Error:      status != 200,
-	}
+	return LogEvent{}
 }
