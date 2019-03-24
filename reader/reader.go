@@ -60,7 +60,7 @@ func logFileLastLine() (string, error) {
 		// print out last line content
 		buffer = buffer[:numRead]
 
-		logEvent := structs.parseLogEvent(string(buffer))
+		logEvent := structs.ParseLogEvent(string(buffer))
 
 		files = append(files, logEvent)
 		previousOffset = offset
