@@ -20,16 +20,6 @@ type LogEvent struct {
 	Error      bool
 }
 
-// Index returns the index of the particular log event
-func Index(vs []LogEvent, t LogEvent) int {
-	for i, v := range vs {
-		if v == t {
-			return i
-		}
-	}
-	return -1
-}
-
 // Filter returns the slice of LogEvents matching filter
 func Filter(vs []LogEvent, f func(LogEvent) bool) []LogEvent {
 	vsf := make([]LogEvent, 0)
