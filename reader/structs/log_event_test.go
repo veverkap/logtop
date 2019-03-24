@@ -125,8 +125,8 @@ func TestParseLogEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ParseLogEvent(tt.args.line); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Pa0rseLogEvent() = %v, want %v", got, tt.want)
+			if got, _ := ParseLogEvent(tt.args.line); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseLogEvent() = %v, want %v", got, tt.want)
 			}
 		})
 	}

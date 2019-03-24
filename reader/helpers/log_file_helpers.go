@@ -25,17 +25,25 @@ func LoadExistingLogFile() {
 	}
 
 	defer file.Close()
-	reader := bufio.NewReader(file)
 
+	LogEvents = parseStructs(file)
+}
+
+func parseStructs(file io.Reader) []structs.LogEvent {
+	reader := bufio.NewReader(file)
+	events := make([]structs.LogEvent, 0)
 	for {
 		line, _, err := reader.ReadLine()
 
 		if err == io.EOF {
 			break
 		}
-
-		LogEvents = append(LogEvents, structs.ParseLogEvent(string(line)))
+		event, err := structs.ParseLogEvent(string(line))
+		if err == nil {
+			events = append(events, event)
+		}
 	}
+	return events
 }
 
 // LogFileLastLine loads the last line
@@ -82,8 +90,10 @@ func LogFileLastLine() (string, error) {
 		// print out last line content
 		buffer = buffer[:numRead]
 
-		logEvent := structs.ParseLogEvent(string(buffer))
-		LogEvents = append(LogEvents, logEvent)
+		logEvent, error := structs.ParseLogEvent(string(buffer))
+		if error == nil {
+			LogEvents = append(LogEvents, logEvent)
+		}
 		previousOffset = offset
 		return string(buffer), nil
 	}
