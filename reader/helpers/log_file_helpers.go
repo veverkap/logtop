@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/veverkap/logtop/reader/structs"
 )
@@ -75,12 +76,16 @@ func LogFileLastLine() (string, error) {
 	if previousOffset != offset {
 		// print out last line content
 		buffer = buffer[:numRead]
-		logEvent, error := structs.ParseLogEvent(string(buffer))
-		if error == nil {
-			LogEvents = append(LogEvents, logEvent)
+		bufferString := string(buffer)
+
+		for _, line := range strings.Split(bufferString, "\n") {
+			logEvent, error := structs.ParseLogEvent(line)
+			if error == nil {
+				LogEvents = append(LogEvents, logEvent)
+			}
 		}
 		previousOffset = offset
-		return string(buffer), nil
+		return bufferString, nil
 	}
 	return "", errors.New("No new line")
 }

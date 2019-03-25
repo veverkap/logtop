@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -26,35 +27,36 @@ func main() {
 	helpers.AccessLog = logFileLocation
 	helpers.LoadExistingLogFile()
 
-	displayUI()
+	// displayUI()
 
-	// tenTicker := time.NewTicker(1 * time.Second).C
-	// events := structs.TrailingEvents(helpers.LogEvents, 10)
-	// details := structs.GroupBySection(events)
-	// for _, detail := range details {
-	// 	fmt.Printf("Section: %s - Hits: %d - Errors: %d\n", detail.Section, detail.Hits, detail.Errors)
-	// }
-	// for {
-	// 	select {
-	// 	case <-tenTicker:
-	// 		print("ticker call\n")
+	tenTicker := time.NewTicker(1 * time.Second).C
+	for {
+		select {
+		case <-tenTicker:
+			print("ticker call\n")
 
-	// 		line, err := helpers.LogFileLastLine()
+			line, _ := helpers.LogFileLastLine()
 
-	// 		if err == nil {
-	// 			event, err := structs.ParseLogEvent(line)
-	// 			if err == nil {
-	// 				helpers.LogEvents = append(helpers.LogEvents, event)
-	// 			}
-	// 		}
+			for _, sline := range strings.Split(line, "\n") {
+				fmt.Printf("sline = %v - %v\n", sline, (sline == ""))
 
-	// 		events := structs.TrailingEvents(helpers.LogEvents, 10)
-	// 		details := structs.GroupBySection(events)
-	// 		for _, detail := range details {
-	// 			fmt.Printf("Section: %s - Hits: %d - Errors: %d\n", detail.Section, detail.Hits, detail.Errors)
-	// 		}
-	// 	}
-	// }
+			}
+			print(len(helpers.LogEvents))
+			print("\n")
+
+		}
+	}
+}
+
+func reloadStatistics(events []structs.LogEvent) [][]string {
+	details := structs.GroupBySection(events)
+	rows := [][]string{
+		[]string{"Section", "Hits", "Errors"},
+	}
+	for _, detail := range details {
+		rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
+	}
+	return rows
 }
 
 func displayUI() {
@@ -76,31 +78,13 @@ func displayUI() {
 	alerts.SetRect(0, 0, 25, 8)
 
 	statistics := widgets.NewTable()
-
-	events := structs.TrailingEvents(helpers.LogEvents, 10)
-	details := structs.GroupBySection(events)
-	rows := [][]string{
-		[]string{"Section", "Hits", "Errors"},
-	}
-	for _, detail := range details {
-		rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
-	}
-	statistics.Rows = rows
-
+	statistics.Rows = reloadStatistics(structs.TrailingEvents(helpers.LogEvents, 10))
 	statistics.Title = "Statistics (Last 10 Seconds)"
 	statistics.TextStyle = ui.NewStyle(ui.ColorWhite)
 	statistics.SetRect(0, 0, 60, 10)
 
-	details = structs.GroupBySection(helpers.LogEvents)
-	rows = [][]string{
-		[]string{"Section", "Hits", "Errors"},
-	}
-	for _, detail := range details {
-		rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
-	}
-
 	allTimeStatistics := widgets.NewTable()
-	allTimeStatistics.Rows = rows
+	allTimeStatistics.Rows = reloadStatistics(helpers.LogEvents)
 	allTimeStatistics.Title = "Statistics (All Time)"
 	allTimeStatistics.TextStyle = ui.NewStyle(ui.ColorWhite)
 	allTimeStatistics.SetRect(0, 0, 60, 10)
@@ -132,10 +116,6 @@ func displayUI() {
 			switch e.ID {
 			case "q", "<C-c>":
 				return
-			case "j", "<Down>":
-				liveLog.ScrollDown()
-			case "k", "<Up>":
-				liveLog.ScrollUp()
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
 				grid.SetRect(0, 0, payload.Width, payload.Height)
@@ -143,36 +123,19 @@ func displayUI() {
 				ui.Render(grid)
 			}
 		case <-tenTicker:
-			events := structs.TrailingEvents(helpers.LogEvents, 10)
-			details := structs.GroupBySection(events)
-			rows := [][]string{
-				[]string{"Section", "Hits", "Errors"},
-			}
-			for _, detail := range details {
-				rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
-			}
-			statistics.Rows = rows
-
+			statistics.Rows = reloadStatistics(structs.TrailingEvents(helpers.LogEvents, 10))
 			ui.Render(grid)
 		case <-ticker:
 			line, err := helpers.LogFileLastLine()
 
+			rows := liveLog.Rows
 			if err == nil {
-				liveLog.Rows = append(liveLog.Rows, strings.ReplaceAll(line, "\n", ""))
-				liveLog.ScrollPageDown()
-				event, err := structs.ParseLogEvent(line)
-				if err == nil {
-					helpers.LogEvents = append(helpers.LogEvents, event)
-
-					details = structs.GroupBySection(helpers.LogEvents)
-					rows = [][]string{
-						[]string{"Section", "Hits", "Errors"},
-					}
-					for _, detail := range details {
-						rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
-					}
-					allTimeStatistics.Rows = rows
+				for _, logLine := range strings.Split(line, "\n") {
+					rows = append(rows, logLine)
 				}
+				liveLog.Rows = rows
+				liveLog.ScrollPageDown()
+				allTimeStatistics.Rows = reloadStatistics(helpers.LogEvents)
 			}
 
 			ui.Render(grid)

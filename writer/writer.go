@@ -64,7 +64,7 @@ func main() {
 		// 	randomInt(1000, 5000)}
 
 		// randomSleep := Sleeps[randomInt(0, 5)]
-		randomSleep := 500
+		randomSleep := 100
 		fmt.Printf("Sleeping for %d ms\n", randomSleep)
 		time.Sleep(time.Duration(randomSleep) * time.Millisecond)
 	}
