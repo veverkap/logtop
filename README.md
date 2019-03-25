@@ -1,8 +1,8 @@
-***********************************
+---
 
 HTTP log monitoring console program
 
-***********************************
+---
 
 Consume an actively written-to w3c-formatted HTTP access log (https://www.w3.org/Daemon/User/Config/Logging.html). It should default to reading /tmp/access.log and be overrideable
 Example log lines:
@@ -29,4 +29,15 @@ RUN touch /var/log/access.log  # since the program will read this by default
 WORKDIR /usr/src
 ADD . /usr/src
 ENTRYPOINT ["python", "main.py"]# this is an example for a python program, pick the language of your choice and we'll have something else write to that log file.
+```
+
+```
+program start
+- parse flags
+- load existing events into memory
+- setup UI
+- start loop to process UI events and read lines from file
+  - loop reads the file from the last offset
+  - processes any rows to make them LogEvents
+  - update statistics
 ```

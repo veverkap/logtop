@@ -11,9 +11,6 @@ import (
 	"github.com/veverkap/logtop/reader/structs"
 )
 
-// AccessLog represents the default AccessLog location
-var AccessLog = "/tmp/access.log"
-
 // LogEvents represents a slice of events
 var LogEvents = make([]structs.LogEvent, 0)
 
@@ -25,18 +22,66 @@ func handleError(err error) {
 	}
 }
 
-// LoadExistingLogFile will return the structs
+// LoadExistingLogFile will:
+// 1. Read existing log file
+// 2. Parse each line into a LogEvent
+// 3. Set the previousOffset to the current size of the file
 func LoadExistingLogFile() {
-	file, err := os.Open(AccessLog)
+	file, err := os.Open(LogFileLocation)
 	if err != nil {
-		log.Fatalf("Could not load file %s", AccessLog)
+		log.Fatalf("Could not load file %s", LogFileLocation)
 	}
 	defer file.Close()
 
-	LogEvents = parseStructs(file)
+	reader := bufio.NewReader(file)
 
-	fileInfo, err := os.Stat(AccessLog)
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		event, err := structs.ParseLogEvent(string(line))
+
+		if err == nil {
+			LogEvents = append(LogEvents, event)
+		}
+	}
+
+	fileInfo, err := os.Stat(LogFileLocation)
 	previousOffset = fileInfo.Size()
+}
+
+// LoadLogFileUpdates loads the last line
+func LoadLogFileUpdates() ([]string, error) {
+	fileInfo, err := os.Stat(LogFileLocation)
+	handleError(err)
+	file, err := os.Open(LogFileLocation)
+	handleError(err)
+
+	defer file.Close()
+
+	buffer := make([]byte, 1024)
+	offset := fileInfo.Size()
+
+	updates := make([]string, 0)
+
+	if previousOffset != offset {
+		numRead, _ := file.ReadAt(buffer, previousOffset-1)
+		// print out last line content
+		buffer = buffer[:numRead]
+		bufferString := string(buffer)
+
+		for _, line := range strings.Split(bufferString, "\n") {
+			logEvent, error := structs.ParseLogEvent(line)
+			if error == nil {
+				LogEvents = append(LogEvents, logEvent)
+				updates = append(updates, line)
+			}
+		}
+		previousOffset = offset
+		return updates, nil
+	}
+	return updates, errors.New("No new line")
 }
 
 func parseStructs(file io.Reader) []structs.LogEvent {
@@ -49,43 +94,10 @@ func parseStructs(file io.Reader) []structs.LogEvent {
 			break
 		}
 		event, err := structs.ParseLogEvent(string(line))
+
 		if err == nil {
 			events = append(events, event)
 		}
 	}
 	return events
-}
-
-// LogFileLastLine loads the last line
-func LogFileLastLine() (string, error) {
-	fileInfo, err := os.Stat(AccessLog)
-	handleError(err)
-	file, err := os.Open(AccessLog)
-	handleError(err)
-
-	defer file.Close()
-	buffer := make([]byte, 1024)
-
-	// +1 to compensate for the initial 0 byte of the line
-	// otherwise, the initial character of the line will be missing
-
-	// instead of reading the whole file into memory, we just read from certain offset
-	offset := fileInfo.Size()
-	numRead, err := file.ReadAt(buffer, previousOffset-1)
-
-	if previousOffset != offset {
-		// print out last line content
-		buffer = buffer[:numRead]
-		bufferString := string(buffer)
-
-		for _, line := range strings.Split(bufferString, "\n") {
-			logEvent, error := structs.ParseLogEvent(line)
-			if error == nil {
-				LogEvents = append(LogEvents, logEvent)
-			}
-		}
-		previousOffset = offset
-		return bufferString, nil
-	}
-	return "", errors.New("No new line")
 }
