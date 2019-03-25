@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"log"
 	"os"
 
 	"github.com/veverkap/logtop/reader/structs"
@@ -17,13 +18,18 @@ var LogEvents = make([]structs.LogEvent, 0)
 
 var previousOffset int64
 
+func handleError(err error) {
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
 // LoadExistingLogFile will return the structs
 func LoadExistingLogFile() {
 	file, err := os.Open(AccessLog)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Could not load file %s", AccessLog)
 	}
-
 	defer file.Close()
 
 	LogEvents = parseStructs(file)
@@ -52,13 +58,9 @@ func parseStructs(file io.Reader) []structs.LogEvent {
 // LogFileLastLine loads the last line
 func LogFileLastLine() (string, error) {
 	fileInfo, err := os.Stat(AccessLog)
-	if err != nil {
-		panic(err)
-	}
+	handleError(err)
 	file, err := os.Open(AccessLog)
-	if err != nil {
-		panic(err)
-	}
+	handleError(err)
 
 	defer file.Close()
 	buffer := make([]byte, 1024)

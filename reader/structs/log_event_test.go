@@ -138,3 +138,23 @@ func generateTime(now time.Time) (time.Time, string) {
 	date, _ := time.Parse(longForm, formattedDate)
 	return date, formattedDate
 }
+
+func TestGroupBySection(t *testing.T) {
+	type args struct {
+		vs []LogEvent
+	}
+	tests := []struct {
+		name string
+		args args
+		want []PathDetail
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GroupBySection(tt.args.vs); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GroupBySection() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// PathDetail represents all the events for a particular path
+type PathDetail struct {
+	Path   string
+	Events []LogEvent
+}
+
 // LogEvent represents a line of the log file
 type LogEvent struct {
 	Host       string
@@ -28,6 +34,18 @@ func Filter(vs []LogEvent, f func(LogEvent) bool) []LogEvent {
 		if f(v) {
 			vsf = append(vsf, v)
 		}
+	}
+	return vsf
+}
+
+// GroupBySection returns the slice of LogEvents matching filter
+func GroupBySection(vs []LogEvent) []PathDetail {
+	vsf := make([]PathDetail, 0)
+	for _, v := range vs {
+		vsf = append(vsf, PathDetail{
+			Path:   v.Section,
+			Events: make([]LogEvent, 0),
+		})
 	}
 	return vsf
 }
