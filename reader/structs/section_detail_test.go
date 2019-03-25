@@ -3,15 +3,17 @@ package structs
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestGroupBySection(t *testing.T) {
 	type args struct {
 		vs []LogEvent
 	}
-	section1 := LogEvent{Section: "/scuba", Path: "/scuba/doo"}
-	section2 := LogEvent{Section: "/scuba", Path: "/scuba/loo"}
-	section3 := LogEvent{Section: "/other", Path: "/other/loo"}
+	now := time.Now()
+	section1 := LogEvent{Section: "/scuba", Path: "/scuba/doo", Error: false, Date: now}
+	section2 := LogEvent{Section: "/scuba", Path: "/scuba/loo", Error: true, Date: now}
+	section3 := LogEvent{Section: "/other", Path: "/other/loo", Error: false, Date: now}
 
 	tests := []struct {
 		name string
@@ -25,9 +27,11 @@ func TestGroupBySection(t *testing.T) {
 			},
 			want: []SectionDetail{
 				SectionDetail{
-					Section: "/scuba",
-					Events:  []LogEvent{section1, section2},
-					Hits:    2,
+					Section:            "/scuba",
+					Events:             []LogEvent{section1, section2},
+					Hits:               2,
+					Errors:             1,
+					HitsLastTenSeconds: 2,
 				},
 			},
 		},
@@ -43,14 +47,18 @@ func TestGroupBySection(t *testing.T) {
 						section1,
 						section2,
 					},
-					Hits: 2,
+					Hits:               2,
+					HitsLastTenSeconds: 2,
+					Errors:             1,
 				},
 				SectionDetail{
 					Section: "/other",
 					Events: []LogEvent{
 						section3,
 					},
-					Hits: 1,
+					Hits:               1,
+					HitsLastTenSeconds: 1,
+					Errors:             0,
 				},
 			},
 		},
