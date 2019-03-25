@@ -138,3 +138,24 @@ func generateTime(now time.Time) (time.Time, string) {
 	date, _ := time.Parse(longForm, formattedDate)
 	return date, formattedDate
 }
+
+func TestFilter(t *testing.T) {
+	type args struct {
+		vs []LogEvent
+		f  func(LogEvent) bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []LogEvent
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Filter(tt.args.vs, tt.args.f); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Filter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -24,6 +24,9 @@ func GroupBySection(vs []LogEvent) []SectionDetail {
 	vsf := make([]SectionDetail, 0)
 	for _, v := range vs {
 
+		filter := func(v LogEvent) bool {
+			return true
+		}
 		index := findSectionDetail(vsf, v.Section)
 
 		if index >= 0 {
@@ -33,12 +36,15 @@ func GroupBySection(vs []LogEvent) []SectionDetail {
 			}
 			events := append(vsf[index].Events, v)
 			trailingEvents := TrailingEvents(events, 10)
+			trailingErrors := Filter(trailingEvents, filter)
+
 			vsf[index] = SectionDetail{
-				Section:            v.Section,
-				Events:             events,
-				Hits:               len(events),
-				HitsLastTenSeconds: len(trailingEvents),
-				Errors:             errors,
+				Section:              v.Section,
+				Events:               events,
+				Hits:                 len(events),
+				HitsLastTenSeconds:   len(trailingEvents),
+				Errors:               errors,
+				ErrorsLastTenSeconds: len(trailingErrors),
 			}
 		} else {
 			errors := 0
@@ -47,12 +53,14 @@ func GroupBySection(vs []LogEvent) []SectionDetail {
 			}
 			events := append(make([]LogEvent, 0), v)
 			trailingEvents := TrailingEvents(events, 10)
+			trailingErrors := Filter(trailingEvents, filter)
 			vsf = append(vsf, SectionDetail{
-				Section:            v.Section,
-				Events:             events,
-				Hits:               1,
-				HitsLastTenSeconds: len(trailingEvents),
-				Errors:             errors,
+				Section:              v.Section,
+				Events:               events,
+				Hits:                 1,
+				HitsLastTenSeconds:   len(trailingEvents),
+				Errors:               errors,
+				ErrorsLastTenSeconds: len(trailingErrors),
 			})
 		}
 	}
