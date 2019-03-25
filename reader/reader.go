@@ -38,6 +38,11 @@ func main() {
 	// }
 	// displayUI()
 	// twoD := make([][]int, 0)
+	sections := structs.GroupBySection(helpers.LogEvents)
+
+	for _, section := range sections {
+		fmt.Printf("section: %s = %d\n", section.Section, len(section.Events))
+	}
 }
 
 func displayUI() {
