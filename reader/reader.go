@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +26,35 @@ func main() {
 	helpers.AccessLog = logFileLocation
 	helpers.LoadExistingLogFile()
 
-	// displayUI()
+	displayUI()
+
+	// tenTicker := time.NewTicker(1 * time.Second).C
+	// events := structs.TrailingEvents(helpers.LogEvents, 10)
+	// details := structs.GroupBySection(events)
+	// for _, detail := range details {
+	// 	fmt.Printf("Section: %s - Hits: %d - Errors: %d\n", detail.Section, detail.Hits, detail.Errors)
+	// }
+	// for {
+	// 	select {
+	// 	case <-tenTicker:
+	// 		print("ticker call\n")
+
+	// 		line, err := helpers.LogFileLastLine()
+
+	// 		if err == nil {
+	// 			event, err := structs.ParseLogEvent(line)
+	// 			if err == nil {
+	// 				helpers.LogEvents = append(helpers.LogEvents, event)
+	// 			}
+	// 		}
+
+	// 		events := structs.TrailingEvents(helpers.LogEvents, 10)
+	// 		details := structs.GroupBySection(events)
+	// 		for _, detail := range details {
+	// 			fmt.Printf("Section: %s - Hits: %d - Errors: %d\n", detail.Section, detail.Hits, detail.Errors)
+	// 		}
+	// 	}
+	// }
 }
 
 func displayUI() {
@@ -54,7 +83,7 @@ func displayUI() {
 		[]string{"Section", "Hits", "Errors"},
 	}
 	for _, detail := range details {
-		rows = append(rows, []string{detail.Section, string(detail.Hits), string(detail.Errors)})
+		rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
 	}
 	statistics.Rows = rows
 
@@ -62,12 +91,16 @@ func displayUI() {
 	statistics.TextStyle = ui.NewStyle(ui.ColorWhite)
 	statistics.SetRect(0, 0, 60, 10)
 
-	allTimeStatistics := widgets.NewTable()
-	allTimeStatistics.Rows = [][]string{
+	details = structs.GroupBySection(helpers.LogEvents)
+	rows = [][]string{
 		[]string{"Section", "Hits", "Errors"},
-		[]string{"你好吗", "Go-lang is so cool", "Im working on Ruby"},
-		[]string{"2016", "10", "11"},
 	}
+	for _, detail := range details {
+		rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
+	}
+
+	allTimeStatistics := widgets.NewTable()
+	allTimeStatistics.Rows = rows
 	allTimeStatistics.Title = "Statistics (All Time)"
 	allTimeStatistics.TextStyle = ui.NewStyle(ui.ColorWhite)
 	allTimeStatistics.SetRect(0, 0, 60, 10)
@@ -116,9 +149,10 @@ func displayUI() {
 				[]string{"Section", "Hits", "Errors"},
 			}
 			for _, detail := range details {
-				rows = append(rows, []string{detail.Section, string(detail.Hits), string(detail.Errors)})
+				rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
 			}
 			statistics.Rows = rows
+
 			ui.Render(grid)
 		case <-ticker:
 			line, err := helpers.LogFileLastLine()
@@ -129,6 +163,15 @@ func displayUI() {
 				event, err := structs.ParseLogEvent(line)
 				if err == nil {
 					helpers.LogEvents = append(helpers.LogEvents, event)
+
+					details = structs.GroupBySection(helpers.LogEvents)
+					rows = [][]string{
+						[]string{"Section", "Hits", "Errors"},
+					}
+					for _, detail := range details {
+						rows = append(rows, []string{detail.Section, strconv.Itoa(detail.Hits), strconv.Itoa(detail.Errors)})
+					}
+					allTimeStatistics.Rows = rows
 				}
 			}
 

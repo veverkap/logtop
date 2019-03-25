@@ -56,14 +56,15 @@ func main() {
 		f.Close()
 		rand.Seed(time.Now().UnixNano())
 
-		Sleeps := [5]int{
-			randomInt(10, 200),
-			randomInt(200, 400),
-			randomInt(400, 500),
-			randomInt(500, 1000),
-			randomInt(1000, 5000)}
+		// Sleeps := [5]int{
+		// 	randomInt(10, 200),
+		// 	randomInt(200, 400),
+		// 	randomInt(400, 500),
+		// 	randomInt(500, 1000),
+		// 	randomInt(1000, 5000)}
 
-		randomSleep := Sleeps[randomInt(0, 5)]
+		// randomSleep := Sleeps[randomInt(0, 5)]
+		randomSleep := 500
 		fmt.Printf("Sleeping for %d ms\n", randomSleep)
 		time.Sleep(time.Duration(randomSleep) * time.Millisecond)
 	}
