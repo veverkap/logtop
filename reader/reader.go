@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -25,24 +24,8 @@ func main() {
 
 	helpers.AccessLog = logFileLocation
 	helpers.LoadExistingLogFile()
-	fmt.Printf("There are currently %d events\n", len(helpers.LogEvents))
 
-	// for {
-	// 	line, err := helpers.LogFileLastLine()
-	// 	if err == nil {
-	// 		structs.ParseLogEvent(line)
-	// 		fmt.Printf("There are currently %d events\n", len(helpers.LogEvents))
-	// 		hits := structs.TrailingEvents(helpers.LogEvents, 10)
-	// 		fmt.Printf("There have been %d events in last 10\n", len(hits))
-	// 	}
-	// }
 	// displayUI()
-	// twoD := make([][]int, 0)
-	sections := structs.GroupBySection(helpers.LogEvents)
-
-	for _, section := range sections {
-		fmt.Printf("section: %s = %d\n", section.Section, len(section.Events))
-	}
 }
 
 func displayUI() {
@@ -51,45 +34,43 @@ func displayUI() {
 	}
 	defer ui.Close()
 
-	l := widgets.NewList()
-	l.Title = "Live Log"
-	l.Rows = []string{}
-	l.WrapText = true
-	l.SetRect(0, 0, 25, 8)
+	liveLog := widgets.NewList()
+	liveLog.Title = "Live Log"
+	liveLog.Rows = []string{}
+	liveLog.WrapText = true
+	liveLog.SetRect(0, 0, 25, 8)
 
-	trailingEvents := structs.TrailingEvents(helpers.LogEvents, 10)
-	hits := len(trailingEvents)
+	alerts := widgets.NewList()
+	alerts.Title = "Alerts"
+	alerts.Rows = []string{}
+	alerts.WrapText = true
+	alerts.SetRect(0, 0, 25, 8)
 
-	p := widgets.NewParagraph()
-	p.Title = "Hits/Sec For Last 10 Seconds"
-	p.Text = "LOK"
-	p.SetRect(0, 0, 10, 5)
-	p.TextStyle.Fg = ui.ColorWhite
-	p.BorderStyle.Fg = ui.ColorCyan
+	statistics := widgets.NewTable()
 
-	table1 := widgets.NewTable()
-	table1.Rows = [][]string{
-		[]string{"header1", "header2", "header3"},
+	events := structs.TrailingEvents(helpers.LogEvents, 10)
+	details := structs.GroupBySection(events)
+	rows := [][]string{
+		[]string{"Section", "Hits", "Errors"},
+	}
+	for _, detail := range details {
+		rows = append(rows, []string{detail.Section, string(detail.Hits), string(detail.Errors)})
+	}
+	statistics.Rows = rows
+
+	statistics.Title = "Statistics (Last 10 Seconds)"
+	statistics.TextStyle = ui.NewStyle(ui.ColorWhite)
+	statistics.SetRect(0, 0, 60, 10)
+
+	allTimeStatistics := widgets.NewTable()
+	allTimeStatistics.Rows = [][]string{
+		[]string{"Section", "Hits", "Errors"},
 		[]string{"你好吗", "Go-lang is so cool", "Im working on Ruby"},
 		[]string{"2016", "10", "11"},
 	}
-	table1.TextStyle = ui.NewStyle(ui.ColorWhite)
-	table1.SetRect(0, 0, 60, 10)
-	hitrate := widgets.NewParagraph()
-	hitrate.Title = "Hits/Sec For Last 10 Seconds"
-
-	hitrate.Text = fmt.Sprintf("\n    %d req/sec", hits)
-	hitrate.SetRect(0, 0, 10, 5)
-	hitrate.TextStyle.Fg = ui.ColorWhite
-	hitrate.BorderStyle.Fg = ui.ColorCyan
-
-	p2 := widgets.NewParagraph()
-	p2.Title = "ALAMRS"
-	p2.Text = "DUDE"
-
-	alarms := widgets.NewParagraph()
-	alarms.Text = "<> This row has 3 columns\n<- Widgets can be stacked up like left side\n<- Stacked widgets are treated as a single widget"
-	alarms.Title = "Demonstration"
+	allTimeStatistics.Title = "Statistics (All Time)"
+	allTimeStatistics.TextStyle = ui.NewStyle(ui.ColorWhite)
+	allTimeStatistics.SetRect(0, 0, 60, 10)
 
 	grid := ui.NewGrid()
 	termWidth, termHeight := ui.TerminalDimensions()
@@ -97,17 +78,12 @@ func displayUI() {
 
 	grid.Set(
 		ui.NewRow(1.0/2,
-			ui.NewCol(1.0/4, p),
-			ui.NewCol(1.0/4,
-				ui.NewRow(.5/3, hitrate),
-				ui.NewRow(.9/3, p),
-				ui.NewRow(1.2/3, p2),
-			),
-			ui.NewCol(1.0/2, alarms),
+			ui.NewCol(1.0/2, statistics),
+			ui.NewCol(1.0/2, alerts),
 		),
 		ui.NewRow(1.0/2,
-			ui.NewCol(1.0/2, table1),
-			ui.NewCol(1.0/2, l),
+			ui.NewCol(1.0/2, allTimeStatistics),
+			ui.NewCol(1.0/2, liveLog),
 		),
 	)
 
@@ -124,9 +100,9 @@ func displayUI() {
 			case "q", "<C-c>":
 				return
 			case "j", "<Down>":
-				l.ScrollDown()
+				liveLog.ScrollDown()
 			case "k", "<Up>":
-				l.ScrollUp()
+				liveLog.ScrollUp()
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
 				grid.SetRect(0, 0, payload.Width, payload.Height)
@@ -134,22 +110,26 @@ func displayUI() {
 				ui.Render(grid)
 			}
 		case <-tenTicker:
-			// hits := len(structs.TrailingEvents(helpers.LogEvents, 10))
-			p2.Text += "\n10"
+			events := structs.TrailingEvents(helpers.LogEvents, 10)
+			details := structs.GroupBySection(events)
+			rows := [][]string{
+				[]string{"Section", "Hits", "Errors"},
+			}
+			for _, detail := range details {
+				rows = append(rows, []string{detail.Section, string(detail.Hits), string(detail.Errors)})
+			}
+			statistics.Rows = rows
 			ui.Render(grid)
 		case <-ticker:
 			line, err := helpers.LogFileLastLine()
 
 			if err == nil {
-				l.Rows = append(l.Rows, strings.ReplaceAll(line, "\n", ""))
-				l.ScrollPageDown()
+				liveLog.Rows = append(liveLog.Rows, strings.ReplaceAll(line, "\n", ""))
+				liveLog.ScrollPageDown()
 				event, err := structs.ParseLogEvent(line)
 				if err == nil {
 					helpers.LogEvents = append(helpers.LogEvents, event)
 				}
-				hits := len(structs.TrailingEvents(helpers.LogEvents, 10))
-				p.Text = fmt.Sprintf("    %d req/sec", hits)
-				hitrate.Text = fmt.Sprintf("\n    %d req/sec", hits)
 			}
 
 			ui.Render(grid)

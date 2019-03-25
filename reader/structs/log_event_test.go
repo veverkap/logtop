@@ -159,3 +159,107 @@ func TestFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestSortBySection(t *testing.T) {
+	type args struct {
+		events []LogEvent
+	}
+	tests := []struct {
+		name string
+		args args
+		want []LogEvent
+	}{
+		{
+			name: "Normal",
+			args: args{
+				events: []LogEvent{
+					LogEvent{Section: "/blah"},
+					LogEvent{Section: "/apple"},
+				},
+			},
+			want: []LogEvent{
+				LogEvent{Section: "/apple"},
+				LogEvent{Section: "/blah"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SortBySection(tt.args.events); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SortBySection() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSortByDateAsc(t *testing.T) {
+	type args struct {
+		events []LogEvent
+	}
+	tests := []struct {
+		name string
+		args args
+		want []LogEvent
+	}{
+		{
+			name: "Normal",
+			args: args{
+				events: []LogEvent{
+					LogEvent{Date: time.Date(
+						2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+					LogEvent{Date: time.Date(
+						2007, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+				},
+			},
+			want: []LogEvent{
+				LogEvent{Date: time.Date(
+					2007, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+				LogEvent{Date: time.Date(
+					2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SortByDateAsc(tt.args.events); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SortByDateAsc() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSortByDateDesc(t *testing.T) {
+	type args struct {
+		events []LogEvent
+	}
+	tests := []struct {
+		name string
+		args args
+		want []LogEvent
+	}{
+		{
+			name: "Normal",
+			args: args{
+				events: []LogEvent{
+					LogEvent{Date: time.Date(
+						2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+					LogEvent{Date: time.Date(
+						2007, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+				},
+			},
+			want: []LogEvent{
+				LogEvent{Date: time.Date(
+					2009, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+				LogEvent{Date: time.Date(
+					2007, 11, 17, 20, 34, 58, 651387237, time.UTC)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SortByDateDesc(tt.args.events); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SortByDateDesc() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
