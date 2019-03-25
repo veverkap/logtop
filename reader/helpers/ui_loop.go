@@ -12,6 +12,8 @@ import (
 
 func reloadStatistics(events []structs.LogEvent) [][]string {
 	details := structs.GroupBySection(events)
+	details = structs.SortByHitsDesc(details)
+
 	rows := [][]string{
 		[]string{"Section", "Hits", "Errors"},
 	}
@@ -27,6 +29,8 @@ func LoopUI() {
 		log.Fatalf("failed to initialize termui: %v", err)
 	}
 	defer ui.Close()
+
+	blank := widgets.NewParagraph()
 
 	liveLog := widgets.NewList()
 	liveLog.Title = "Live Log"
@@ -58,11 +62,14 @@ func LoopUI() {
 
 	grid.Set(
 		ui.NewRow(1.0/2,
-			ui.NewCol(1.0/2, statistics),
+			ui.NewCol(1.0/2,
+				ui.NewRow(1.0/2, statistics),
+				ui.NewRow(1.0/2, allTimeStatistics),
+			),
 			ui.NewCol(1.0/2, alerts),
 		),
 		ui.NewRow(1.0/2,
-			ui.NewCol(1.0/2, allTimeStatistics),
+			ui.NewCol(1.0/2, blank),
 			ui.NewCol(1.0/2, liveLog),
 		),
 	)
@@ -99,6 +106,7 @@ func LoopUI() {
 				liveLog.Rows = rows
 				liveLog.ScrollPageDown()
 				allTimeStatistics.Rows = reloadStatistics(LogEvents)
+
 			}
 
 			ui.Render(grid)

@@ -22,11 +22,11 @@ type LogEvent struct {
 	Error      bool
 }
 
-// By is the type of a "less" function that defines the ordering of its arguments.
-type By func(p1, p2 *LogEvent) bool
+// LogEventBy is the type of a "less" function that defines the ordering of its arguments.
+type LogEventBy func(p1, p2 *LogEvent) bool
 
 // Sort is a method on the function type, By, that sorts the argument slice according to the function.
-func (by By) Sort(events []LogEvent) {
+func (by LogEventBy) Sort(events []LogEvent) {
 	es := &eventSorter{
 		events: events,
 		by:     by, // The Sort method's receiver is the function (closure) that defines the sort order.
@@ -60,7 +60,7 @@ func SortBySection(events []LogEvent) []LogEvent {
 		return p1.Section < p2.Section
 	}
 
-	By(section).Sort(events)
+	LogEventBy(section).Sort(events)
 	return events
 }
 
@@ -70,7 +70,7 @@ func SortByDateAsc(events []LogEvent) []LogEvent {
 		return p1.Date.Before(p2.Date)
 	}
 
-	By(date).Sort(events)
+	LogEventBy(date).Sort(events)
 	return events
 }
 
@@ -80,7 +80,7 @@ func SortByDateDesc(events []LogEvent) []LogEvent {
 		return p1.Date.After(p2.Date)
 	}
 
-	By(date).Sort(events)
+	LogEventBy(date).Sort(events)
 	return events
 }
 

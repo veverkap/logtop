@@ -7,5 +7,6 @@ import (
 func main() {
 	helpers.ParseFlags()
 	helpers.LoadExistingLogFile()
+	// structs.CountLast24Hours(helpers.LogEvents)
 	helpers.LoopUI()
 }
