@@ -27,11 +27,12 @@ func TestGroupBySection(t *testing.T) {
 			},
 			want: []SectionDetail{
 				SectionDetail{
-					Section:            "/scuba",
-					Events:             []LogEvent{section1, section2},
-					Hits:               2,
-					Errors:             1,
-					HitsLastTenSeconds: 2,
+					Section:              "/scuba",
+					Events:               []LogEvent{section1, section2},
+					Hits:                 2,
+					Errors:               1,
+					HitsLastTenSeconds:   2,
+					ErrorsLastTenSeconds: 1,
 				},
 			},
 		},
@@ -47,18 +48,20 @@ func TestGroupBySection(t *testing.T) {
 						section1,
 						section2,
 					},
-					Hits:               2,
-					HitsLastTenSeconds: 2,
-					Errors:             1,
+					Hits:                 2,
+					HitsLastTenSeconds:   2,
+					Errors:               1,
+					ErrorsLastTenSeconds: 1,
 				},
 				SectionDetail{
 					Section: "/other",
 					Events: []LogEvent{
 						section3,
 					},
-					Hits:               1,
-					HitsLastTenSeconds: 1,
-					Errors:             0,
+					Hits:                 1,
+					HitsLastTenSeconds:   1,
+					Errors:               0,
+					ErrorsLastTenSeconds: 0,
 				},
 			},
 		},
@@ -66,7 +69,6 @@ func TestGroupBySection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GroupBySection(tt.args.vs); !reflect.DeepEqual(got, tt.want) {
-
 				t.Errorf("GOT  = %v\nWANT = %v", got, tt.want)
 			}
 		})

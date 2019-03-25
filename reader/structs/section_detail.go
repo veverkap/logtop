@@ -25,7 +25,7 @@ func GroupBySection(vs []LogEvent) []SectionDetail {
 	for _, v := range vs {
 
 		filter := func(v LogEvent) bool {
-			return true
+			return v.Error
 		}
 		index := findSectionDetail(vsf, v.Section)
 
