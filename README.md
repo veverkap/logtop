@@ -27,3 +27,28 @@ WORKDIR /usr/src
 ADD . /usr/src
 ENTRYPOINT ["python", "main.py"]# this is an example for a python program, pick the language of your choice and we'll have something else write to that log file.
 ```
+
+## Writer
+I wrote a helper that generates log files at https://github.com/veverkap/logtop/blob/master/writer/writer.go
+
+```
+Usage of ./writer:
+  -file string
+    	Location of log file (default "/tmp/access.log")
+  -rate int
+    	Number of requests per second to write (default 10)
+```
+
+## Reader
+
+The reader lives at https://github.com/veverkap/logtop/blob/master/reader/reader.go
+
+```
+Usage of ./reader:
+  -logFileLocation string
+    	Location of log file to parse (default "/tmp/access.log")
+  -threshold int
+    	Number of requests per second maximum for alert (default 10)
+  -thresholdDuration int
+    	Duration in seconds of sampling period for alerts (default 120)
+```
