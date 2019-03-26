@@ -12,8 +12,29 @@ import (
 	"github.com/veverkap/logtop/reader/structs"
 )
 
-var isErrorState bool
+// UIStartTime is when the ui started
+var UIStartTime time.Time
 
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
+func loadDebugValues() [][]string {
+	now := time.Now()
+	diff := now.Sub(UIStartTime)
+	seconds := int(diff.Seconds())
+
+	return [][]string{
+		[]string{"Program Duration", fmt.Sprintf("%d secs", seconds)},
+		[]string{"Total Event Count", fmt.Sprintf("%d", len(LogEvents))},
+
+		[]string{"AlertThresholdDuration", fmt.Sprintf("%d secs", AlertThresholdDuration)},
+		[]string{"AlertThreshold", fmt.Sprintf("%d/sec", AlertThreshold)},
+		[]string{fmt.Sprintf("Events in last %d secs", AlertThresholdDuration), fmt.Sprintf("%d", structs.EventCount)},
+		[]string{fmt.Sprintf("Event rate for last %d secs", AlertThresholdDuration), fmt.Sprintf("%.2f/sec", structs.PerSecondRate)},
+		[]string{"Current Alert State", fmt.Sprintf("%s", structs.CurrentErrorState)},
+	}
+}
 func reloadStatistics(events []structs.LogEvent) [][]string {
 	details := structs.GroupBySection(events)
 	details = structs.SortByHitsDesc(details)
@@ -27,43 +48,6 @@ func reloadStatistics(events []structs.LogEvent) [][]string {
 	return rows
 }
 
-func checkErrorState(alerts *widgets.List, paragraph *widgets.Paragraph, alertThresholdDuration int, alertThreshold int) {
-	eventCount := len(structs.TrailingEvents(LogEvents, int64(alertThresholdDuration)))
-	perSecond := eventCount / alertThresholdDuration
-	paragraph.Text = fmt.Sprintf("Duration: %v\nEventCount: %v\nCurrent rate %d/sec", alertThresholdDuration, eventCount, perSecond)
-	t := time.Now()
-	if isErrorState {
-		// We are already in an error state, let's check if we should get OUT of error
-		if perSecond < alertThreshold {
-			// We can get out of error state
-			alerts.Rows = append(alerts.Rows, "We are out of trouble.")
-			alerts.Rows = append(
-				alerts.Rows,
-				fmt.Sprintf("High traffic alert recovered - hits = %d/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", perSecond, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
-			)
-
-			isErrorState = false
-		} else {
-			// we can't do anything
-			isErrorState = true
-		}
-	} else {
-		// We are not currently in error state, let's check
-		if perSecond >= alertThreshold {
-
-			alerts.Rows = append(
-				alerts.Rows,
-				fmt.Sprintf("High traffic generated an alert - hits = %d/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", perSecond, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
-			)
-			alerts.ScrollPageDown()
-			isErrorState = true
-		} else {
-			isErrorState = false
-		}
-	}
-
-}
-
 // LoopUI loads the UI and then goes into loop
 func LoopUI(tail *tail.Tail) {
 	if err := ui.Init(); err != nil {
@@ -71,10 +55,12 @@ func LoopUI(tail *tail.Tail) {
 	}
 	defer ui.Close()
 
+	UIStartTime = time.Now()
 	termWidth, termHeight := ui.TerminalDimensions()
 
-	paragraph := widgets.NewParagraph()
-	paragraph.Text = "loading"
+	debugTable := widgets.NewTable()
+	debugTable.Rows = loadDebugValues()
+	debugTable.Title = "Debug Output"
 
 	liveLog := widgets.NewList()
 	liveLog.Title = "Live Log"
@@ -105,7 +91,7 @@ func LoopUI(tail *tail.Tail) {
 				ui.NewRow(1.0/2, statistics),
 			),
 			ui.NewCol(1.0/2,
-				ui.NewRow(1.0/2, paragraph),
+				ui.NewRow(1.0/2, debugTable),
 				ui.NewRow(1.0/2, liveLog),
 			),
 		),
@@ -132,15 +118,49 @@ func LoopUI(tail *tail.Tail) {
 			event, err := structs.ParseLogEvent(line.Text)
 			if err == nil {
 				LogEvents = append(LogEvents, event)
+				processErrorState(alerts)
+
 				liveLog.Rows = append(liveLog.Rows, line.Text)
 				liveLog.ScrollPageDown()
+
 				statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+				debugTable.Rows = loadDebugValues()
 				ui.Render(grid)
 			}
 		case <-ticker:
+			processErrorState(alerts)
 			statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
-			checkErrorState(alerts, paragraph, AlertThresholdDuration, AlertThreshold)
+			debugTable.Rows = loadDebugValues()
 			ui.Render(grid)
 		}
 	}
+}
+
+func processErrorState(alerts *widgets.List) {
+	errorState := structs.CalculateErrorState(LogEvents, AlertThresholdDuration, AlertThreshold)
+
+	switch errorState {
+	case structs.Triggered:
+		displayErrorState(alerts)
+	case structs.Recovered:
+		hideErrorState(alerts)
+	}
+
+}
+func displayErrorState(alerts *widgets.List) {
+	t := time.Now()
+	alerts.Rows = append(
+		alerts.Rows,
+		fmt.Sprintf("High traffic generated an alert - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", structs.PerSecondRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+	)
+	alerts.ScrollPageDown()
+}
+
+func hideErrorState(alerts *widgets.List) {
+	t := time.Now()
+	alerts.Rows = append(
+		alerts.Rows,
+		fmt.Sprintf("High traffic alert recovered - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", structs.PerSecondRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+	)
+	alerts.ScrollPageDown()
 }
