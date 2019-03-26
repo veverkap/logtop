@@ -44,27 +44,8 @@ func (s *sectionDetailSorter) Less(i, j int) bool {
 	return s.by(&s.details[i], &s.details[j])
 }
 
-func findSectionDetail(details []SectionDetail, section string) int {
-	for i, detail := range details {
-		if detail.Section == section {
-			return i
-		}
-	}
-	return -1
-}
-
-// SortByHits returns the log events sorted by section
-func SortByHits(details []SectionDetail) []SectionDetail {
-	hits := func(p1, p2 *SectionDetail) bool {
-		return p1.Hits < p2.Hits
-	}
-
-	SectionDetailBy(hits).Sort(details)
-	return details
-}
-
-// SortByHitsDesc returns the log events sorted by section
-func SortByHitsDesc(details []SectionDetail) []SectionDetail {
+// SortSectionDetailsByHitsDesc returns the log events sorted by section
+func SortSectionDetailsByHitsDesc(details []SectionDetail) []SectionDetail {
 	hits := func(p1, p2 *SectionDetail) bool {
 		return p1.Hits > p2.Hits
 	}
