@@ -9,16 +9,17 @@ import (
 	ui "github.com/gizak/termui"
 	"github.com/gizak/termui/widgets"
 	"github.com/hpcloud/tail"
+
 	"github.com/veverkap/logtop/reader/structs"
 )
+
+// LogEvents is a slice of LogEvents (representations of lines from the log)
+var LogEvents = make([]structs.LogEvent, 0)
 
 // UIStartTime is when the ui started
 var UIStartTime time.Time
 
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
-}
-
+// loadDebugValues generates a table of debug values
 func loadDebugValues() [][]string {
 	now := time.Now()
 	diff := now.Sub(UIStartTime)
@@ -30,14 +31,16 @@ func loadDebugValues() [][]string {
 
 		[]string{"AlertThresholdDuration", fmt.Sprintf("%d secs", AlertThresholdDuration)},
 		[]string{"AlertThreshold", fmt.Sprintf("%d/sec", AlertThreshold)},
-		[]string{fmt.Sprintf("Events in last %d secs", AlertThresholdDuration), fmt.Sprintf("%d", structs.EventCount)},
-		[]string{fmt.Sprintf("Event rate for last %d secs", AlertThresholdDuration), fmt.Sprintf("%.2f/sec", structs.PerSecondRate)},
-		[]string{"Current Alert State", fmt.Sprintf("%s", structs.CurrentErrorState)},
+		[]string{fmt.Sprintf("Events in last %d secs", AlertThresholdDuration), fmt.Sprintf("%d", ThresholdEventCount)},
+		[]string{fmt.Sprintf("Event rate for last %d secs", AlertThresholdDuration), fmt.Sprintf("%.2f/sec", ThresholdRate)},
+		[]string{"Current Alert State", fmt.Sprintf("%s", CurrentErrorState)},
 	}
 }
+
+// reloadStatistics generates a table of statistics
 func reloadStatistics(events []structs.LogEvent) [][]string {
 	details := structs.GroupBySection(events)
-	details = structs.SortByHitsDesc(details)
+	details = structs.SortSectionDetailsByHitsDesc(details)
 
 	rows := [][]string{
 		[]string{"Section", "Hits", "Errors"},
@@ -50,24 +53,28 @@ func reloadStatistics(events []structs.LogEvent) [][]string {
 
 // LoopUI loads the UI and then goes into loop
 func LoopUI(tail *tail.Tail) {
+	UIStartTime = time.Now()
+
 	if err := ui.Init(); err != nil {
 		log.Fatalf("failed to initialize termui: %v", err)
 	}
 	defer ui.Close()
 
-	UIStartTime = time.Now()
 	termWidth, termHeight := ui.TerminalDimensions()
 
+	// this is our debug table
 	debugTable := widgets.NewTable()
 	debugTable.Rows = loadDebugValues()
 	debugTable.Title = "Debug Output"
 
+	// this will include the log (an echo)
 	liveLog := widgets.NewList()
 	liveLog.Title = "Live Log"
 	liveLog.Rows = []string{}
 	liveLog.WrapText = true
 	liveLog.SetRect(0, 0, termWidth/2, termHeight/2)
 
+	// holder for any alerts
 	alerts := widgets.NewList()
 	alerts.Title = "Alerts"
 	alerts.Rows = []string{}
@@ -115,52 +122,69 @@ func LoopUI(tail *tail.Tail) {
 				ui.Render(grid)
 			}
 		case line, _ := <-tail.Lines:
+			// we receive a message in the tail file chan
 			event, err := structs.ParseLogEvent(line.Text)
 			if err == nil {
+				// we were able to parse this line and need to add it to our LogEvents slice
 				LogEvents = append(LogEvents, event)
-				processErrorState(alerts)
 
+				// add this line to our liveLog
 				liveLog.Rows = append(liveLog.Rows, line.Text)
 				liveLog.ScrollPageDown()
 
+				// let's check if these changes triggered an alert
+				processErrorState(alerts)
+
+				// recalculate statistics for the last 10 seconds
 				statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+
+				// load debug values and display
 				debugTable.Rows = loadDebugValues()
 				ui.Render(grid)
 			}
 		case <-ticker:
+			// it's been 500 ms, let's see if we are in alert
 			processErrorState(alerts)
+
+			// recalculate statistics for the last 10 seconds
 			statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+
+			// load debug values and display
 			debugTable.Rows = loadDebugValues()
 			ui.Render(grid)
 		}
 	}
 }
 
+// processErrorState calls the structs.Alert.CalculateErrorState and adds an Alert when appropriate
 func processErrorState(alerts *widgets.List) {
-	errorState := structs.CalculateErrorState(LogEvents, AlertThresholdDuration, AlertThreshold)
+	errorState := CalculateErrorState(LogEvents, AlertThresholdDuration, AlertThreshold)
 
 	switch errorState {
-	case structs.Triggered:
+	case Triggered:
 		displayErrorState(alerts)
-	case structs.Recovered:
+	case Recovered:
 		hideErrorState(alerts)
 	}
 
 }
+
+// displayErrorState adds a text notification to the list that we generated an alert
 func displayErrorState(alerts *widgets.List) {
 	t := time.Now()
 	alerts.Rows = append(
 		alerts.Rows,
-		fmt.Sprintf("High traffic generated an alert - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", structs.PerSecondRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+		fmt.Sprintf("High traffic generated an alert - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", ThresholdRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
 	)
 	alerts.ScrollPageDown()
 }
 
+// displayErrorState adds a text notification to the list that we have recovered from our alert
 func hideErrorState(alerts *widgets.List) {
 	t := time.Now()
 	alerts.Rows = append(
 		alerts.Rows,
-		fmt.Sprintf("High traffic alert recovered - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", structs.PerSecondRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+		fmt.Sprintf("High traffic alert recovered - hits = %.2f/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", ThresholdRate, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
 	)
 	alerts.ScrollPageDown()
 }
