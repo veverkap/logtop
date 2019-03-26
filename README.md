@@ -1,4 +1,4 @@
-##Instructions for HTTP log monitoring console program
+## Instructions for HTTP log monitoring console program
 
 Consume an actively written-to w3c-formatted HTTP access log (https://www.w3.org/Daemon/User/Config/Logging.html). It should default to reading /tmp/access.log and be overrideable
 
