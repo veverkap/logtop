@@ -1,12 +1,16 @@
-package structs
+package helpers
 
-// ErrorState int
+import "github.com/veverkap/logtop/reader/structs"
+
+// ErrorState int for "enum"
 type ErrorState int
 
-/* The idea here is that we have a few states in our system
-1. We are not in alert mode
-2. We are in alert mode and are waiting for recovery (we displayed our alert)
-3. We have recovered and need to go into non-alert mode
+/*
+The idea here is that we have a few states in our system
+	1. We are not in alert mode (Default)
+	2. We received an alert but we have not shown the UI indicator (Triggered)
+	3. We displayed the UI indicator and are waiting for recovery (WaitingForRecovery)
+	4. We have recovered and displayed a UI indicator that we have recovered (Recovered)
 */
 const (
 	Default            ErrorState = iota
@@ -15,18 +19,9 @@ const (
 	Recovered          ErrorState = iota
 )
 
-// CurrentErrorState represents the state of the system
-var CurrentErrorState ErrorState
-
-// EventCount represents the number of events in the threshold period
-var EventCount int
-
-// PerSecondRate is the current rate
-var PerSecondRate float64
-
+// String converts the ErrorState to a string representation
 func (state ErrorState) String() string {
-	names :=
-		[]string{"Default", "Triggered", "Waiting For Recovery", "Recovered"}
+	names := []string{"Default", "Triggered", "Waiting For Recovery", "Recovered"}
 
 	if state < Default || state > Recovered {
 		return "Unknown"
@@ -34,12 +29,21 @@ func (state ErrorState) String() string {
 	return names[state]
 }
 
-// CalculateErrorState checks the trailing events and calculates whether the threshold has been met
-func CalculateErrorState(events []LogEvent, alertThresholdDuration int, alertThreshold int) ErrorState {
-	EventCount = len(TrailingEvents(events, int64(alertThresholdDuration)))
-	perSecond := EventCount / alertThresholdDuration
+// CurrentErrorState represents the CURRENT state of the system
+var CurrentErrorState ErrorState
 
-	PerSecondRate = float64(EventCount*1.0) / float64(alertThresholdDuration*1.0)
+// ThresholdEventCount represents the number of events in the threshold period
+var ThresholdEventCount int
+
+// ThresholdRate is the current rate (hits / sec) in the current threshold (used for UI)
+var ThresholdRate float64
+
+// CalculateErrorState checks the trailing events and calculates whether the threshold has been met
+func CalculateErrorState(events []structs.LogEvent, alertThresholdDuration int, alertThreshold int) ErrorState {
+	ThresholdEventCount = len(structs.TrailingEvents(events, int64(alertThresholdDuration)))
+	perSecond := ThresholdEventCount / alertThresholdDuration
+
+	ThresholdRate = float64(ThresholdEventCount*1.0) / float64(alertThresholdDuration*1.0)
 
 	if CurrentErrorState == Default {
 		// We are in default state
