@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
+	"log"
 	"os"
 	"time"
+
+	"math/rand" // crypto/rand would be preferred for more secure implementations (https://github.com/golang/go/wiki/CodeReviewComments#crypto-rand
 )
 
 func check(e error) {
@@ -25,6 +27,7 @@ var sections = [5]string{"api", "admin", "account", "user", "config"}
 var subsections = [5]string{"", "/user", "/widget", "/search", "/update"}
 var statusCodes = [7]int{200, 200, 201, 401, 403, 500, 503}
 var perSecondRate int
+var logFileLocation string
 
 func generateLine() string {
 	rand.Seed(time.Now().UnixNano())
@@ -51,14 +54,19 @@ func generateLine() string {
 
 func main() {
 	flag.IntVar(&perSecondRate, "rate", 10, "Number of requests per second to write")
+	flag.StringVar(&logFileLocation, "file", "/tmp/access.log", "Location of log file")
 	flag.Parse()
+
 	ticker := time.NewTicker(time.Second).C
+
 	for {
 		select {
 		case <-ticker:
-			fmt.Printf("Writing events at %d/sec\n", perSecondRate)
-			f, err := os.OpenFile("/tmp/access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			check(err)
+			fmt.Printf("Writing events at %d/sec to %s\n", perSecondRate, logFileLocation)
+			f, err := os.OpenFile(logFileLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				log.Fatalf("Could not open file %s", logFileLocation)
+			}
 			for index := 0; index < perSecondRate; index++ {
 				fmt.Fprintln(f, generateLine())
 			}
