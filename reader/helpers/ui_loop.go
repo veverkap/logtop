@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -26,15 +27,21 @@ func reloadStatistics(events []structs.LogEvent) [][]string {
 	return rows
 }
 
-func checkErrorState(alerts *widgets.List, alertThresholdDuration int, alertThreshold int) {
+func checkErrorState(alerts *widgets.List, paragraph *widgets.Paragraph, alertThresholdDuration int, alertThreshold int) {
 	eventCount := len(structs.TrailingEvents(LogEvents, int64(alertThresholdDuration)))
 	perSecond := eventCount / alertThresholdDuration
-
+	paragraph.Text = fmt.Sprintf("Duration: %v\nEventCount: %v\nCurrent rate %d/sec", alertThresholdDuration, eventCount, perSecond)
+	t := time.Now()
 	if isErrorState {
 		// We are already in an error state, let's check if we should get OUT of error
 		if perSecond < alertThreshold {
 			// We can get out of error state
 			alerts.Rows = append(alerts.Rows, "We are out of trouble.")
+			alerts.Rows = append(
+				alerts.Rows,
+				fmt.Sprintf("High traffic alert recovered - hits = %d/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", perSecond, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+			)
+
 			isErrorState = false
 		} else {
 			// we can't do anything
@@ -42,14 +49,12 @@ func checkErrorState(alerts *widgets.List, alertThresholdDuration int, alertThre
 		}
 	} else {
 		// We are not currently in error state, let's check
-		if perSecond > alertThreshold {
-			// rate := fmt.Sprintf(
-			// 	"%v seconds / %v hits / %d rate",
-			// 	alertThresholdDuration,
-			// 	eventCount,
-			// 	perSecond,
-			// )
-			alerts.Rows = append(alerts.Rows, "We are in trouble")
+		if perSecond >= alertThreshold {
+
+			alerts.Rows = append(
+				alerts.Rows,
+				fmt.Sprintf("High traffic generated an alert - hits = %d/sec, triggered at %02d/%s/%d:%02d:%02d:%02d +0000", perSecond, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second()),
+			)
 			alerts.ScrollPageDown()
 			isErrorState = true
 		} else {
@@ -67,6 +72,9 @@ func LoopUI(tail *tail.Tail) {
 	defer ui.Close()
 
 	termWidth, termHeight := ui.TerminalDimensions()
+
+	paragraph := widgets.NewParagraph()
+	paragraph.Text = "loading"
 
 	liveLog := widgets.NewList()
 	liveLog.Title = "Live Log"
@@ -97,7 +105,8 @@ func LoopUI(tail *tail.Tail) {
 				ui.NewRow(1.0/2, statistics),
 			),
 			ui.NewCol(1.0/2,
-				ui.NewRow(2.0/2, liveLog),
+				ui.NewRow(1.0/2, paragraph),
+				ui.NewRow(1.0/2, liveLog),
 			),
 		),
 	)
@@ -106,7 +115,6 @@ func LoopUI(tail *tail.Tail) {
 
 	uiEvents := ui.PollEvents()
 	ticker := time.NewTicker(500 * time.Millisecond).C
-	tenTicker := time.NewTicker(10 * time.Second).C
 
 	for {
 		select {
@@ -126,16 +134,12 @@ func LoopUI(tail *tail.Tail) {
 				LogEvents = append(LogEvents, event)
 				liveLog.Rows = append(liveLog.Rows, line.Text)
 				liveLog.ScrollPageDown()
-
 				statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
-
 				ui.Render(grid)
 			}
-		case <-tenTicker:
-			statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
-			checkErrorState(alerts, AlertThresholdDuration, AlertThreshold)
-			ui.Render(grid)
 		case <-ticker:
+			statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+			checkErrorState(alerts, paragraph, AlertThresholdDuration, AlertThreshold)
 			ui.Render(grid)
 		}
 	}
