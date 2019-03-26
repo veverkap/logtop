@@ -148,3 +148,39 @@ func ParseLogEvent(line string) (LogEvent, error) {
 	}
 	return LogEvent{}, errors.New("Bad regex")
 }
+
+// GroupBySection returns the slice of LogEvents matching filter
+func GroupBySection(vs []LogEvent) []SectionDetail {
+	vsf := make([]SectionDetail, 0)
+	for _, v := range vs {
+		index := findSectionDetail(vsf, v.Section)
+
+		if index >= 0 {
+			errors := vsf[index].Errors
+			if v.Error {
+				errors++
+			}
+			events := append(vsf[index].Events, v)
+
+			vsf[index] = SectionDetail{
+				Section: v.Section,
+				Events:  events,
+				Hits:    len(events),
+				Errors:  errors,
+			}
+		} else {
+			errors := 0
+			if v.Error {
+				errors++
+			}
+			events := append(make([]LogEvent, 0), v)
+			vsf = append(vsf, SectionDetail{
+				Section: v.Section,
+				Events:  events,
+				Hits:    1,
+				Errors:  errors,
+			})
+		}
+	}
+	return vsf
+}

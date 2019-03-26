@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -18,56 +19,50 @@ func randomInt(min, max int) int {
 	return min + rand.Intn(max-min)
 }
 
+var httpVerbs = [5]string{"GET", "POST", "PUT", "PATCH", "DELETE"}
+var users = [5]string{"james", "jill", "frank", "patrick", "lucy"}
+var sections = [5]string{"api", "admin", "account", "user", "config"}
+var subsections = [5]string{"", "/user", "/widget", "/search", "/update"}
+var statusCodes = [7]int{200, 200, 201, 401, 403, 500, 503}
+var perSecondRate int
+
+func generateLine() string {
+	rand.Seed(time.Now().UnixNano())
+	verb := httpVerbs[randomInt(0, 5)]
+
+	rand.Seed(time.Now().UnixNano())
+	user := users[randomInt(0, 5)]
+
+	rand.Seed(time.Now().UnixNano())
+	section := sections[randomInt(0, 5)]
+
+	rand.Seed(time.Now().UnixNano())
+	subsection := subsections[randomInt(0, 5)]
+
+	rand.Seed(time.Now().UnixNano())
+	statusCode := statusCodes[randomInt(0, 5)]
+
+	rand.Seed(time.Now().UnixNano())
+	byteSize := randomInt(100, 500)
+	t := time.Now().UTC()
+
+	return fmt.Sprintf("127.0.0.1 - %s [%02d/%s/%d:%02d:%02d:%02d +0000] \"%s /%s%s HTTP/1.0\" %d %d", user, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second(), verb, section, subsection, statusCode, byteSize)
+}
+
 func main() {
-	HTTPVerbs := [5]string{"GET", "POST", "PUT", "PATCH", "DELETE"}
-	Users := [5]string{"james", "jill", "frank", "patrick", "lucy"}
-	Sections := [5]string{"api", "admin", "account", "user", "config"}
-	Subsections := [5]string{"", "/user", "/widget", "/search", "/update"}
-	StatusCodes := [7]int{200, 200, 201, 401, 403, 500, 503}
-
-	//127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report HTTP/1.0" 200 123
-
-	for true {
-		f, err := os.OpenFile("/tmp/access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		check(err)
-		// defer f.Close()
-
-		rand.Seed(time.Now().UnixNano())
-		verb := HTTPVerbs[randomInt(0, 5)]
-
-		rand.Seed(time.Now().UnixNano())
-		user := Users[randomInt(0, 5)]
-
-		rand.Seed(time.Now().UnixNano())
-		section := Sections[randomInt(0, 5)]
-
-		rand.Seed(time.Now().UnixNano())
-		subsection := Subsections[randomInt(0, 5)]
-
-		rand.Seed(time.Now().UnixNano())
-		statusCode := StatusCodes[randomInt(0, 5)]
-
-		rand.Seed(time.Now().UnixNano())
-		byteSize := randomInt(100, 500)
-		t := time.Now().UTC()
-
-		fmt.Fprintf(f, "127.0.0.1 - %s [%02d/%s/%d:%02d:%02d:%02d +0000] \"%s /%s%s HTTP/1.0\" %d %d\n", user, t.Day(), t.Month().String()[:3], t.Year(), t.Hour(), t.Minute(), t.Second(), verb, section, subsection, statusCode, byteSize)
-
-		f.Close()
-		rand.Seed(time.Now().UnixNano())
-
-		// Sleeps := [5]int{
-		// 	randomInt(10, 200),
-		// 	randomInt(200, 400),
-		// 	randomInt(400, 500),
-		// 	randomInt(500, 1000),
-		// 	randomInt(1000, 5000)}
-
-		// randomSleep := Sleeps[randomInt(0, 5)]
-		randomSleep := 100
-		fmt.Printf("Sleeping for %d ms\n", randomSleep)
-		time.Sleep(time.Duration(randomSleep) * time.Millisecond)
+	flag.IntVar(&perSecondRate, "rate", 10, "Number of requests per second to write")
+	flag.Parse()
+	ticker := time.NewTicker(time.Second).C
+	for {
+		select {
+		case <-ticker:
+			fmt.Printf("Writing events at %d/sec\n", perSecondRate)
+			f, err := os.OpenFile("/tmp/access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			check(err)
+			for index := 0; index < perSecondRate; index++ {
+				fmt.Fprintln(f, generateLine())
+			}
+			f.Close()
+		}
 	}
-	//
-
 }

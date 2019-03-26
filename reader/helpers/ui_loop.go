@@ -7,8 +7,11 @@ import (
 
 	ui "github.com/gizak/termui"
 	"github.com/gizak/termui/widgets"
+	"github.com/hpcloud/tail"
 	"github.com/veverkap/logtop/reader/structs"
 )
+
+var isErrorState bool
 
 func reloadStatistics(events []structs.LogEvent) [][]string {
 	details := structs.GroupBySection(events)
@@ -23,20 +26,53 @@ func reloadStatistics(events []structs.LogEvent) [][]string {
 	return rows
 }
 
+func checkErrorState(alerts *widgets.List, alertThresholdDuration int, alertThreshold int) {
+	eventCount := len(structs.TrailingEvents(LogEvents, int64(alertThresholdDuration)))
+	perSecond := eventCount / alertThresholdDuration
+
+	if isErrorState {
+		// We are already in an error state, let's check if we should get OUT of error
+		if perSecond < alertThreshold {
+			// We can get out of error state
+			alerts.Rows = append(alerts.Rows, "We are out of trouble.")
+			isErrorState = false
+		} else {
+			// we can't do anything
+			isErrorState = true
+		}
+	} else {
+		// We are not currently in error state, let's check
+		if perSecond > alertThreshold {
+			// rate := fmt.Sprintf(
+			// 	"%v seconds / %v hits / %d rate",
+			// 	alertThresholdDuration,
+			// 	eventCount,
+			// 	perSecond,
+			// )
+			alerts.Rows = append(alerts.Rows, "We are in trouble")
+			alerts.ScrollPageDown()
+			isErrorState = true
+		} else {
+			isErrorState = false
+		}
+	}
+
+}
+
 // LoopUI loads the UI and then goes into loop
-func LoopUI() {
+func LoopUI(tail *tail.Tail) {
 	if err := ui.Init(); err != nil {
 		log.Fatalf("failed to initialize termui: %v", err)
 	}
 	defer ui.Close()
 
-	blank := widgets.NewParagraph()
+	termWidth, termHeight := ui.TerminalDimensions()
 
 	liveLog := widgets.NewList()
 	liveLog.Title = "Live Log"
 	liveLog.Rows = []string{}
 	liveLog.WrapText = true
-	liveLog.SetRect(0, 0, 25, 8)
+	liveLog.SetRect(0, 0, termWidth/2, termHeight/2)
 
 	alerts := widgets.NewList()
 	alerts.Title = "Alerts"
@@ -50,27 +86,19 @@ func LoopUI() {
 	statistics.TextStyle = ui.NewStyle(ui.ColorWhite)
 	statistics.SetRect(0, 0, 60, 10)
 
-	allTimeStatistics := widgets.NewTable()
-	allTimeStatistics.Rows = reloadStatistics(LogEvents)
-	allTimeStatistics.Title = "Statistics (All Time)"
-	allTimeStatistics.TextStyle = ui.NewStyle(ui.ColorWhite)
-	allTimeStatistics.SetRect(0, 0, 60, 10)
-
 	grid := ui.NewGrid()
-	termWidth, termHeight := ui.TerminalDimensions()
+
 	grid.SetRect(0, 0, termWidth, termHeight)
 
 	grid.Set(
-		ui.NewRow(1.0/2,
+		ui.NewRow(1.0,
 			ui.NewCol(1.0/2,
+				ui.NewRow(1.0/2, alerts),
 				ui.NewRow(1.0/2, statistics),
-				ui.NewRow(1.0/2, allTimeStatistics),
 			),
-			ui.NewCol(1.0/2, alerts),
-		),
-		ui.NewRow(1.0/2,
-			ui.NewCol(1.0/2, blank),
-			ui.NewCol(1.0/2, liveLog),
+			ui.NewCol(1.0/2,
+				ui.NewRow(2.0/2, liveLog),
+			),
 		),
 	)
 
@@ -92,23 +120,22 @@ func LoopUI() {
 				ui.Clear()
 				ui.Render(grid)
 			}
+		case line, _ := <-tail.Lines:
+			event, err := structs.ParseLogEvent(line.Text)
+			if err == nil {
+				LogEvents = append(LogEvents, event)
+				liveLog.Rows = append(liveLog.Rows, line.Text)
+				liveLog.ScrollPageDown()
+
+				statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+
+				ui.Render(grid)
+			}
 		case <-tenTicker:
 			statistics.Rows = reloadStatistics(structs.TrailingEvents(LogEvents, 10))
+			checkErrorState(alerts, AlertThresholdDuration, AlertThreshold)
 			ui.Render(grid)
 		case <-ticker:
-			lines, err := LoadLogFileUpdates()
-
-			rows := liveLog.Rows
-			if err == nil {
-				for _, logLine := range lines {
-					rows = append(rows, logLine)
-				}
-				liveLog.Rows = rows
-				liveLog.ScrollPageDown()
-				allTimeStatistics.Rows = reloadStatistics(LogEvents)
-
-			}
-
 			ui.Render(grid)
 		}
 	}

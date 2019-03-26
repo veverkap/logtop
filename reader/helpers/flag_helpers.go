@@ -2,9 +2,6 @@ package helpers
 
 import "flag"
 
-// RefreshRate represents "How often the UI should update in seconds"
-var RefreshRate int
-
 // AlertThreshold represents "Number of requests per second maximum for alert"
 var AlertThreshold int
 
@@ -16,7 +13,6 @@ var LogFileLocation string
 
 // ParseFlags loads the flags
 func ParseFlags() {
-	flag.IntVar(&RefreshRate, "refreshRate", 10, "How often the UI should update in seconds")
 	flag.IntVar(&AlertThreshold, "threshold", 10, "Number of requests per second maximum for alert")
 	flag.IntVar(&AlertThresholdDuration, "thresholdDuration", 120, "Duration in seconds of sampling period for alerts")
 	flag.StringVar(&LogFileLocation, "logFileLocation", "/tmp/access.log", "Location of log file to parse")
