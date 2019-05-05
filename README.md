@@ -1,6 +1,6 @@
-## Instructions for HTTP log monitoring console program
+## HTTP log monitoring console program
 
-Consume an actively written-to w3c-formatted HTTP access log (https://www.w3.org/Daemon/User/Config/Logging.html). It should default to reading /tmp/access.log and be overrideable
+Consumes an actively written-to w3c-formatted HTTP access log (https://www.w3.org/Daemon/User/Config/Logging.html). It should default to reading /tmp/access.log and be overrideable
 
 Example log lines:
 
@@ -16,17 +16,6 @@ Example log lines:
 3. Whenever total traffic for the past 2 minutes exceeds a certain number on average, add a message saying that “High traffic generated an alert - hits = {value}, triggered at {time}”. The default threshold should be 10 requests per second, and should be overridable.
 4. Whenever the total traffic drops again below that value on average for the past 2 minutes, add another message detailing when the alert recovered.
 5. Make sure all messages showing when alerting thresholds are crossed remain visible on the page for historical reasons.
-6. Write a test for the alerting logic.
-7. Explain how you’d improve on this application design.
-8. If you have access to a linux docker environment, we'd love to be able to docker build and run your project! If you don't though, don't sweat it. As an example for a solution based on python 3:
-
-```
-FROM python:3
-RUN touch /var/log/access.log  # since the program will read this by default
-WORKDIR /usr/src
-ADD . /usr/src
-ENTRYPOINT ["python", "main.py"]# this is an example for a python program, pick the language of your choice and we'll have something else write to that log file.
-```
 
 ## Writer
 I wrote a helper that generates log files at https://github.com/veverkap/logtop/blob/master/writer/writer.go
